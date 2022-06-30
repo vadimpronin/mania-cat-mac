@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from tkinter import *
 
 import keyboard
@@ -126,12 +128,12 @@ class Cat(Frame):
         self.right_paw = "right_" + bin(self.paw_positions["right"])[2:].zfill(2)
 
 
-root = Tk()
-root.title("Cat")
-root.geometry("400x225")
-root.wm_attributes("-topmost", True)
+window = Tk()
+window.title("Cat")
+window.geometry("400x225")
+window.wm_attributes("-topmost", True)
 
-cat = Cat(root)
+cat = Cat(window)
 cat.pack(fill=BOTH, expand=YES)
 
-root.mainloop()
+window.mainloop()
