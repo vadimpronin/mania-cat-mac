@@ -1,4 +1,4 @@
-# mania-cat-mac
+# mania-cat-python
 
 
 ## Prerequisites
