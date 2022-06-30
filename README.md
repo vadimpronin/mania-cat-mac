@@ -4,7 +4,7 @@
 ## Prerequisites
 
 ```bash
-python3 -m pip install pyobjc-framework-ApplicationServices pyobjc-framework-CoreText
+pip3 install -r requirements.txt
 ```
 
 ## Usage
