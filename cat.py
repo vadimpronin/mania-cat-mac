@@ -1,14 +1,9 @@
 from tkinter import *
 
-from ApplicationServices import kCGEventKeyDown, kCGEventKeyUp, CGEventMaskBit, CGEventTapCreate, \
-    kCGSessionEventTap, kCGHeadInsertEventTap, CFMachPortCreateRunLoopSource, kCFAllocatorDefault, CFRunLoopAddSource, \
-    CFRunLoopGetCurrent, kCFRunLoopCommonModes, CGEventTapEnable, kCGKeyboardEventKeycode, CGEventGetIntegerValueField, \
-    kCGKeyboardEventAutorepeat
 from PIL import ImageTk, Image
 from PIL.Image import Resampling
 
 ##############################################################################
-
 
 root = Tk()
 root.title("Cat")
@@ -27,8 +22,8 @@ class Cat(Frame):
             0x23: ["right", 1],
         }
 
-        self.width = 400
-        self.height = 225
+        self.width = 1189
+        self.height = 669
 
         self.images = {
             "base": Image.open("images/base.png"),
@@ -45,11 +40,8 @@ class Cat(Frame):
         }
 
         self.master = master
-        self.resized_images = {}
-
         self.new_width = self.width
         self.new_height = self.height
-
         self.cat = "base"
         self.left_paw = None
         self.right_paw = None
@@ -59,8 +51,10 @@ class Cat(Frame):
             "right": 0,
         }
 
+        self.resized_images = {}
+
         self.resize_images()
-        self.change_positions()
+        self.update_positions()
 
         self.canvas = Canvas(self.master, width=self.width, height=self.height)
         self.canvas.pack(fill=BOTH, expand=True)
@@ -71,11 +65,11 @@ class Cat(Frame):
             "right_paw": self.canvas.create_image(0, 0, image=self.resized_images[self.right_paw], anchor='nw'),
         }
 
-        self.canvas.bind('<Configure>', self.window_resized)
+        self.master.bind('<Configure>', self.window_resized)
 
         self.redraw_all()
 
-        self.init_keyloger()
+        self.init_keyloger_mac()
 
     def resize_images(self):
         self.resized_images = {}
@@ -94,6 +88,7 @@ class Cat(Frame):
         if self.new_width != self.width or self.new_height != self.height:
             self.width = self.new_width
             self.height = self.new_height
+            self.canvas.config(width=self.width, height=self.height)
             self.resize_images()
             self.redraw_all()
 
@@ -105,33 +100,49 @@ class Cat(Frame):
         self.canvas.itemconfig(self.canvas_images["left_paw"], image=self.resized_images[self.left_paw])
         self.canvas.itemconfig(self.canvas_images["right_paw"], image=self.resized_images[self.right_paw])
 
-    def key_pressed(self, proxy, event_type, event, refcon):
+    def key_pressed_mac(self, proxy, event_type, event, refcon):
+        from ApplicationServices import kCGEventKeyDown, kCGEventKeyUp, kCGKeyboardEventKeycode, \
+            CGEventGetIntegerValueField, kCGKeyboardEventAutorepeat
+
         key_code = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode)
 
         if CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat):
             return event
 
-        print(hex(key_code), "down" if event_type == kCGEventKeyDown else "up")
+        key_event = False
+        if event_type == kCGEventKeyDown:
+            key_event = "down"
+        elif event_type == kCGEventKeyUp:
+            key_event = "up"
+
+        self.process_key_event(key_code, key_event)
+
+        return event
+
+    def process_key_event(self, key_code, key_event):
+        print(hex(key_code), key_event)
 
         need_redraw = False
 
         if key_code in self.keys_map:
             need_redraw = True
-            if event_type == kCGEventKeyDown:
+            if key_event == "down":
                 self.paw_positions[self.keys_map[key_code][0]] += self.keys_map[key_code][1]
-            elif event_type == kCGEventKeyUp:
+            elif key_event == "up":
                 self.paw_positions[self.keys_map[key_code][0]] -= self.keys_map[key_code][1]
 
         if need_redraw:
-            self.change_positions()
+            self.update_positions()
             print(self.left_paw, self.right_paw)
             self.redraw_all()
 
-        return event
+    def init_keyloger_mac(self):
+        from ApplicationServices import kCGEventKeyDown, kCGEventKeyUp, CGEventMaskBit, CGEventTapCreate, \
+            kCGSessionEventTap, kCGHeadInsertEventTap, CFMachPortCreateRunLoopSource, kCFAllocatorDefault, \
+            CFRunLoopAddSource, CFRunLoopGetCurrent, kCFRunLoopCommonModes, CGEventTapEnable
 
-    def init_keyloger(self):
         event_mask = (CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp))
-        event_tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, 0, event_mask, self.key_pressed, 0)
+        event_tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, 0, event_mask, self.key_pressed_mac, 0)
 
         if not event_tap:
             print("ERROR: Unable to create event tap.")
@@ -141,7 +152,7 @@ class Cat(Frame):
         CFRunLoopAddSource(CFRunLoopGetCurrent(), run_loop_source, kCFRunLoopCommonModes)
         CGEventTapEnable(event_tap, True)
 
-    def change_positions(self):
+    def update_positions(self):
         self.left_paw = "left_" + bin(self.paw_positions["left"])[2:].zfill(2)
         self.right_paw = "right_" + bin(self.paw_positions["right"])[2:].zfill(2)
 
