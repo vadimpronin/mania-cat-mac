@@ -10,8 +10,8 @@ from PIL.Image import Resampling
 ##############################################################################
 
 class Cat(Frame):
-    def __init__(self, master, *pargs):
-        Frame.__init__(self, master, *pargs)
+    def __init__(self, window, *pargs):
+        Frame.__init__(self, window, *pargs)
 
         self.keys_map = {
             "q": ["left", 1],
@@ -19,9 +19,6 @@ class Cat(Frame):
             "o": ["right", 1],
             "p": ["right", 0],
         }
-
-        self.width = 1189
-        self.height = 669
 
         self.images = {
             "base": Image.open("images/base.png"),
@@ -37,9 +34,9 @@ class Cat(Frame):
             "left_11": Image.open("images/base_1100.png"),
         }
 
-        self.master = master
-        self.new_width = self.width
-        self.new_height = self.height
+        self.window = window
+        self.width = self.new_width = self.window.winfo_width()
+        self.height = self.new_height = self.window.winfo_height()
         self.cat = "base"
         self.left_paw = None
         self.right_paw = None
@@ -54,7 +51,7 @@ class Cat(Frame):
         self.resize_images()
         self.update_positions()
 
-        self.canvas = Canvas(self.master, width=self.width, height=self.height)
+        self.canvas = Canvas(self.window, width=self.width, height=self.height)
         self.canvas.pack(fill=BOTH, expand=True)
 
         self.canvas_images = {
@@ -63,7 +60,7 @@ class Cat(Frame):
             "right_paw": self.canvas.create_image(0, 0, image=self.resized_images[self.right_paw], anchor='nw'),
         }
 
-        self.master.bind('<Configure>', self.window_resized)
+        self.window.bind('<Configure>', self.window_resized)
 
         self.redraw_all()
 
@@ -80,7 +77,7 @@ class Cat(Frame):
         if 1 != event.width != self.new_width != 1 or 1 != event.height != self.new_height:
             self.new_width = event.width
             self.new_height = event.height
-            self.master.after(50, self.delayed_resize)
+            self.window.after(50, self.delayed_resize)
 
     def delayed_resize(self):
         if self.new_width != self.width or self.new_height != self.height:
@@ -99,41 +96,44 @@ class Cat(Frame):
         self.canvas.itemconfig(self.canvas_images["right_paw"], image=self.resized_images[self.right_paw])
 
     def process_key_event(self, event: keyboard.KeyboardEvent):
+        if event.modifiers or event.name not in self.keys_map:
+            return
+
         key_event = event.event_type
         key_name = event.name
+
         # print(key_name, key_event)
 
         need_redraw = False
 
-        if key_name in self.keys_map:
-            key_config = self.keys_map[key_name]
-            new_position = self.paw_positions[key_config[0]]
+        key_config = self.keys_map[key_name]
+        new_position = self.paw_positions[key_config[0]]
 
-            if key_event == "down":
-                new_position = self.paw_positions[key_config[0]] | (1 << key_config[1])
-            elif key_event == "up":
-                new_position = self.paw_positions[key_config[0]] & ~(1 << key_config[1])
+        if key_event == "down":
+            new_position = self.paw_positions[key_config[0]] | (1 << key_config[1])
+        elif key_event == "up":
+            new_position = self.paw_positions[key_config[0]] & ~(1 << key_config[1])
 
-            if new_position != self.paw_positions[key_config[0]]:
-                self.paw_positions[key_config[0]] = new_position
-                need_redraw = True
+        if new_position != self.paw_positions[key_config[0]]:
+            self.paw_positions[key_config[0]] = new_position
+            need_redraw = True
 
         if need_redraw:
             self.update_positions()
             # print(self.left_paw, self.right_paw)
-            self.redraw_all()
+            self.redraw_paws()
 
     def update_positions(self):
         self.left_paw = "left_" + bin(self.paw_positions["left"])[2:].zfill(2)
         self.right_paw = "right_" + bin(self.paw_positions["right"])[2:].zfill(2)
 
 
-window = Tk()
-window.title("Cat")
-window.geometry("400x225")
-window.wm_attributes("-topmost", True)
+main_window = Tk()
+main_window.title("Cat")
+main_window.geometry("400x225")
+main_window.wm_attributes("-topmost", True)
 
-cat = Cat(window)
+cat = Cat(main_window)
 cat.pack(fill=BOTH, expand=YES)
 
-window.mainloop()
+main_window.mainloop()
