@@ -1,25 +1,21 @@
 from tkinter import *
 
+import keyboard
 from PIL import ImageTk, Image
 from PIL.Image import Resampling
 
+
 ##############################################################################
-
-root = Tk()
-root.title("Cat")
-root.geometry("400x225")
-root.wm_attributes("-topmost", True)
-
 
 class Cat(Frame):
     def __init__(self, master, *pargs):
         Frame.__init__(self, master, *pargs)
 
         self.keys_map = {
-            0xc: ["left", 2],
-            0xd: ["left", 1],
-            0x1f: ["right", 2],
-            0x23: ["right", 1],
+            "q": ["left", 1],
+            "w": ["left", 0],
+            "o": ["right", 1],
+            "p": ["right", 0],
         }
 
         self.width = 1189
@@ -69,7 +65,7 @@ class Cat(Frame):
 
         self.redraw_all()
 
-        self.init_keyloger_mac()
+        keyboard.hook(self.process_key_event, False, self.process_key_event)
 
     def resize_images(self):
         self.resized_images = {}
@@ -100,62 +96,40 @@ class Cat(Frame):
         self.canvas.itemconfig(self.canvas_images["left_paw"], image=self.resized_images[self.left_paw])
         self.canvas.itemconfig(self.canvas_images["right_paw"], image=self.resized_images[self.right_paw])
 
-    def key_pressed_mac(self, proxy, event_type, event, refcon):
-        from ApplicationServices import kCGEventKeyDown, kCGEventKeyUp, kCGKeyboardEventKeycode, \
-            CGEventGetIntegerValueField, kCGKeyboardEventAutorepeat
-
-        key_code = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode)
-
-        if CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat):
-            return event
-
-        key_event = False
-        if event_type == kCGEventKeyDown:
-            key_event = "down"
-        elif event_type == kCGEventKeyUp:
-            key_event = "up"
-
-        self.process_key_event(key_code, key_event)
-
-        return event
-
-    def process_key_event(self, key_code, key_event):
-        print(hex(key_code), key_event)
+    def process_key_event(self, event: keyboard.KeyboardEvent):
+        key_event = event.event_type
+        key_name = event.name
+        # print(key_name, key_event)
 
         need_redraw = False
 
-        if key_code in self.keys_map:
-            need_redraw = True
+        if key_name in self.keys_map:
+            key_config = self.keys_map[key_name]
+            new_position = self.paw_positions[key_config[0]]
+
             if key_event == "down":
-                self.paw_positions[self.keys_map[key_code][0]] += self.keys_map[key_code][1]
+                new_position = self.paw_positions[key_config[0]] | (1 << key_config[1])
             elif key_event == "up":
-                self.paw_positions[self.keys_map[key_code][0]] -= self.keys_map[key_code][1]
+                new_position = self.paw_positions[key_config[0]] & ~(1 << key_config[1])
+
+            if new_position != self.paw_positions[key_config[0]]:
+                self.paw_positions[key_config[0]] = new_position
+                need_redraw = True
 
         if need_redraw:
             self.update_positions()
-            print(self.left_paw, self.right_paw)
+            # print(self.left_paw, self.right_paw)
             self.redraw_all()
-
-    def init_keyloger_mac(self):
-        from ApplicationServices import kCGEventKeyDown, kCGEventKeyUp, CGEventMaskBit, CGEventTapCreate, \
-            kCGSessionEventTap, kCGHeadInsertEventTap, CFMachPortCreateRunLoopSource, kCFAllocatorDefault, \
-            CFRunLoopAddSource, CFRunLoopGetCurrent, kCFRunLoopCommonModes, CGEventTapEnable
-
-        event_mask = (CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp))
-        event_tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, 0, event_mask, self.key_pressed_mac, 0)
-
-        if not event_tap:
-            print("ERROR: Unable to create event tap.")
-            exit(-1)
-
-        run_loop_source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, event_tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), run_loop_source, kCFRunLoopCommonModes)
-        CGEventTapEnable(event_tap, True)
 
     def update_positions(self):
         self.left_paw = "left_" + bin(self.paw_positions["left"])[2:].zfill(2)
         self.right_paw = "right_" + bin(self.paw_positions["right"])[2:].zfill(2)
 
+
+root = Tk()
+root.title("Cat")
+root.geometry("400x225")
+root.wm_attributes("-topmost", True)
 
 cat = Cat(root)
 cat.pack(fill=BOTH, expand=YES)
