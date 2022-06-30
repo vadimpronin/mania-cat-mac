@@ -10,7 +10,7 @@ pip3 install -r requirements.txt
 ## Usage
 
 ```bash
-python3 main.py
+python3 cat.py
 ```
 
 If the program quits with
